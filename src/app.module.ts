@@ -1,17 +1,28 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',       // or 'mysql'
-      host: 'localhost',
-      port: 5432,             // 3306 for MySQL
-      username: 'your_db_user',
-      password: 'your_db_password',
-      database: 'your_db_name',
-      autoLoadEntities: true, // loads entities automatically
-      synchronize: true,      // auto-create schema in dev (turn off in prod!)
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        return {
+          type: 'postgres',
+          host: config.get<string>('DATABASE_HOST')?.trim(),
+          port: parseInt(config.get<string>('DATABASE_PORT')?.trim() ?? '5432', 10),
+          username: config.get<string>('DATABASE_USER')?.trim(),
+          password: config.get<string>('DATABASE_PASS')?.trim(),
+          database: config.get<string>('DATABASE_NAME')?.trim(),
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: false,
+        };
+      },
     }),
   ],
 })
